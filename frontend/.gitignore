@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# Build Outputs
+dist/
+dist-ssr/
+.output/
+.tanstack/
+.wrangler/
+*.tsbuildinfo
+
+# Logs & Dev Server artifacts
+*.log
+*.err
+server-check.*
+vite-dev.*
+
+# OS files
+.DS_Store
+Thumbs.db

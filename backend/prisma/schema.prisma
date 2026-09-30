@@ -1,0 +1,191 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String
+  type        String   @default("ENVIRONMENTAL") // ENVIRONMENTAL, INFRASTRUCTURE, DISASTER_RESPONSE, etc.
+  location    String
+  latitude    Float?
+  longitude   Float?
+  startDate   DateTime
+  endDate     DateTime?
+  status      String   @default("ACTIVE") // ACTIVE, MONITORING, COMPLETED, PLANNED
+  progress    Int      @default(0)
+  category    String   @default("Sustainability")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  media       MediaAsset[]
+  comparisons Comparison[]
+  reports     Report[]
+  evidenceRequirements EvidenceRequirement[]
+  milestones  Milestone[]
+}
+
+model MediaAsset {
+  id                 String   @id @default(cuid())
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  cloudinaryPublicId String
+  cloudinaryUrl      String
+  originalFilename   String?
+  cloudinaryVersion  String?
+  cloudinaryAssetId  String?
+  resourceType       String   @default("image") // image, video
+  format             String   @default("jpg")
+  fileSize           Int?
+  width              Int?
+  height             Int?
+  duration           Float?
+  sha256             String?
+  title              String
+  description        String?
+  capturedAt         DateTime @default(now())
+  latitude           Float?
+  longitude          Float?
+  uploadedAt         DateTime @default(now())
+  status             String   @default("ACTIVE")
+  analysisStatus     String   @default("PENDING")
+  analysisError      String?
+
+  aiMetadata         AIMetadata?
+  verifications      Verification[]
+  auditEvents        AuditEvent[]
+  milestoneLinks     MilestoneMedia[]
+}
+
+model AIMetadata {
+  id             String     @id @default(cuid())
+  mediaId        String     @unique
+  media          MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  objects        Json       // Array of detected objects
+  activities     Json       // Array of identified human/nature activities
+  tags           Json       // Array of descriptive semantic tags
+  locationClues  Json       // Array of inferred environment/terrain clues
+  impactSignals  Json       // Array of indicators showing progress or rehabilitation
+  riskSignals    Json       // Array of detected hazards or anomalies
+  description    String
+  confidence     Float      // AI model confidence score (0.0 to 1.0)
+  analysisStatus String     @default("COMPLETED")
+  analysisMode   String     @default("heuristic_fallback") // live_ai, heuristic_fallback, demo
+  provider       String?
+  model          String?
+  promptVersion  String?
+  rawOutput      Json?
+  evidenceQuality String    @default("unassessed") // unassessed, low, medium, high
+  analyzedAt     DateTime   @default(now())
+  createdAt      DateTime   @default(now())
+}
+
+model Comparison {
+  id            String   @id @default(cuid())
+  projectId     String
+  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  beforeMediaId String
+  afterMediaId  String
+  label         String   @default("Before / After Progress")
+  analysis      Json     // Structured difference description
+  createdAt     DateTime @default(now())
+}
+
+model Report {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title     String
+  type      String   @default("impact") // impact, progress, risk, compliance
+  status    String   @default("published")
+  summary   String
+  content   Json     // { statistics, timeline, selectedEvidence, beforeAfter, aiObservations, sourceAssets }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  auditEvents AuditEvent[]
+}
+
+model Verification {
+  id          String     @id @default(cuid())
+  mediaId     String
+  media       MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  status      String     @default("PENDING") // PENDING, CONFIRMED, FALSE_POSITIVE, NEEDS_REVIEW
+  comment     String?
+  verifiedBy  String?
+  category    String     @default("Risk")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @default(now()) @updatedAt
+  reviewedAt  DateTime?
+}
+
+model Story {
+  id        String   @id @default(cuid())
+  projectId String
+  title     String
+  type      String   @default("impact_story") // impact_story, campaign_copy, social_media
+  content   String
+  assetIds  Json     // Array of media IDs used in the story
+  status    String   @default("published")
+  createdAt DateTime @default(now())
+}
+
+model EvidenceRequirement {
+  id             String   @id @default(cuid())
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title          String
+  description    String
+  evidenceCategory String
+  required       Boolean  @default(true)
+  status         String   @default("OPEN")
+  targetDate     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title       String
+  description String
+  targetDate  DateTime?
+  completedAt DateTime?
+  status      String   @default("PLANNED")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  mediaLinks  MilestoneMedia[]
+}
+
+model MilestoneMedia {
+  milestoneId String
+  mediaId     String
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  media       MediaAsset @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+
+  @@id([milestoneId, mediaId])
+}
+
+model AuditEvent {
+  id          String      @id @default(cuid())
+  mediaId     String?
+  media       MediaAsset? @relation(fields: [mediaId], references: [id], onDelete: Cascade)
+  projectId   String?
+  reportId    String?
+  report      Report?     @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  eventType   String
+  actorType   String
+  actorId     String?
+  description String
+  metadata    Json?
+  createdAt   DateTime    @default(now())
+
+  @@index([mediaId, createdAt])
+  @@index([projectId, createdAt])
+  @@index([reportId, createdAt])
+}
