@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { MediaData } from './mock-db';
-import { cloudinaryService } from './cloudinary.service';
+import { cloudinaryService, CloudinaryUploadResult } from './cloudinary.service';
 import { aiService, StructuredAIAnalysis } from './ai.service';
 import { prisma, isDatabaseAvailable, getPersistenceStatus } from '../config/database';
 
@@ -170,10 +172,54 @@ export class MediaService {
         transformations: ['optimized', 'thumbnail', 'certified', 'eco_focus', 'square', 'portrait', 'landscape'].map((preset) => ({
           preset,
           derivedFrom: media.cloudinaryPublicId,
-          url: cloudinaryService.getTransformedUrl(media.cloudinaryPublicId, preset as any),
+          url: cloudinaryService.getTransformedUrl(media.cloudinaryPublicId, preset as any, media.cloudinaryUrl),
         })),
       },
       auditEvents: media.auditEvents,
+    };
+  }
+
+  private async saveBufferLocally(
+    buffer: Buffer,
+    mediaId: string,
+    meta: {
+      projectId: string;
+      title: string;
+      originalFilename?: string;
+      resourceType?: 'image' | 'video';
+    }
+  ): Promise<CloudinaryUploadResult> {
+    const isVideo = meta.resourceType === 'video' || (Boolean(meta.originalFilename) && /\.(mp4|mov|webm)$/i.test(meta.originalFilename || ''));
+    const ext = meta.originalFilename ? path.extname(meta.originalFilename).replace('.', '') || (isVideo ? 'mp4' : 'jpg') : (isVideo ? 'mp4' : 'jpg');
+    const filename = `${mediaId}.${ext}`;
+    const uploadsDir = path.join(__dirname, '../../public/images/uploads');
+
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
+
+    const filePath = path.join(uploadsDir, filename);
+    await fs.promises.writeFile(filePath, buffer);
+
+    const relativeUrl = `http://localhost:5000/static/images/uploads/${filename}`;
+
+    return {
+      publicId: `local_${mediaId}`,
+      secureUrl: relativeUrl,
+      version: 1,
+      assetId: `local_${mediaId}`,
+      format: ext,
+      resourceType: isVideo ? 'video' : 'image',
+      bytes: buffer.length,
+      width: 1920,
+      height: 1080,
+      transformations: [
+        'q_auto',
+        'f_auto',
+        'w_400,h_300,c_fill',
+        'ar_1:1,c_fill,g_auto',
+        'ar_9:16,c_fill,g_auto',
+      ],
     };
   }
 
@@ -192,13 +238,24 @@ export class MediaService {
       throw new Error(`Project "${meta.projectId}" not found. Please select or create a project first.`);
     }
 
-    // 1. Upload to Cloudinary
+    // 1. Upload to Cloudinary with local storage fallback
     const mediaId = `m_${Date.now().toString().slice(-6)}`;
-    const cldResult = await cloudinaryService.uploadBuffer(
-      buffer,
-      `impactlens/projects/${project.id}/evidence/${mediaId}`,
-      meta.resourceType || 'auto'
-    );
+    let cldResult: CloudinaryUploadResult;
+
+    if (cloudinaryService.isConfigured()) {
+      try {
+        cldResult = await cloudinaryService.uploadBuffer(
+          buffer,
+          `impactlens/projects/${project.id}/evidence/${mediaId}`,
+          meta.resourceType || 'auto'
+        );
+      } catch (uploadErr) {
+        console.warn('Cloudinary upload failed, using resilient local storage:', uploadErr);
+        cldResult = await this.saveBufferLocally(buffer, mediaId, meta);
+      }
+    } else {
+      cldResult = await this.saveBufferLocally(buffer, mediaId, meta);
+    }
 
     const sha256 = crypto.createHash('sha256').update(buffer).digest('hex');
 

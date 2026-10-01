@@ -243,8 +243,43 @@ export async function updateVerification(
   });
 }
 
-export async function getCloudinaryStatus() {
-  return request<{ status: string; message: string; cloudName?: string; isConfigured: boolean }>("/media/cloudinary-status");
+export type CloudinaryPreset = {
+  id: string;
+  name: string;
+  desc: string;
+};
+
+export type CloudinaryStatus = {
+  status: "connected" | "degraded";
+  mode?: "live" | "demo";
+  message: string;
+  cloudName?: string;
+  apiKeyMasked?: string | null;
+  isConfigured: boolean;
+  fallbackActive?: boolean;
+  presets?: CloudinaryPreset[];
+  ping?: { status: string };
+};
+
+export async function getCloudinaryStatus(): Promise<CloudinaryStatus> {
+  return request<CloudinaryStatus>("/media/cloudinary-status");
+}
+
+export async function updateCloudinaryConfig(input: {
+  cloudName: string;
+  apiKey: string;
+  apiSecret: string;
+}): Promise<CloudinaryStatus> {
+  return request<CloudinaryStatus>("/media/cloudinary-config", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+}
+
+export async function resetCloudinaryConfig(): Promise<CloudinaryStatus> {
+  return request<CloudinaryStatus>("/media/cloudinary-reset", {
+    method: "POST",
+  });
 }
 
 export type Report = {

@@ -1,10 +1,10 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { deleteMedia, getEvidencePassport, getMedia, getMediaById, getProject, retryMediaAnalysis, verifyMedia } from "@/lib/api";
 import type { Asset, Project, Status } from "@/lib/demo-data";
-import { useNavigate } from "@tanstack/react-router";
 import { ArrowLeft, CheckCircle2, Download, Fingerprint, Trash2 } from "lucide-react";
+import { Card, StatusBadge, AIBadge, Confidence } from "@/components/evidence";
 
 export const Route = createFileRoute("/_workspace/media/$id")({
   head: () => ({ meta: [{ title: "Media asset — ImpactLens" }, { name: "description", content: "AI analysis, provenance and verification for a field media asset." }] }),
