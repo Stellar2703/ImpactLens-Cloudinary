@@ -16,6 +16,38 @@ export interface CloudinaryUploadResult {
 
 export class CloudinaryService {
   /**
+   * Checks whether Cloudinary credentials are validly configured
+   */
+  isConfigured(): boolean {
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    const apiKey = process.env.CLOUDINARY_API_KEY;
+    const apiSecret = process.env.CLOUDINARY_API_SECRET;
+    return Boolean(
+      cloudName &&
+      apiKey &&
+      apiSecret &&
+      cloudName !== 'your_cloudinary_cloud_name' &&
+      apiKey !== 'your_cloudinary_api_key' &&
+      apiSecret !== 'your_cloudinary_api_secret' &&
+      apiSecret !== 'sample_secret_key'
+    );
+  }
+
+  /**
+   * Ensures the global Cloudinary SDK is initialized with the latest environment variables
+   */
+  ensureConfigured(): boolean {
+    if (!this.isConfigured()) return false;
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+      secure: true,
+    });
+    return true;
+  }
+
+  /**
    * Upload buffer directly to Cloudinary
    */
   async uploadBuffer(
@@ -23,13 +55,8 @@ export class CloudinaryService {
     folder: string = 'impactlens',
     resourceType: 'image' | 'video' | 'auto' = 'auto'
   ): Promise<CloudinaryUploadResult> {
-    if (
-      !process.env.CLOUDINARY_CLOUD_NAME ||
-      !process.env.CLOUDINARY_API_KEY ||
-      !process.env.CLOUDINARY_API_SECRET ||
-      process.env.CLOUDINARY_API_SECRET === 'sample_secret_key'
-    ) {
-      throw new Error('Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.');
+    if (!this.ensureConfigured()) {
+      throw new Error('Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET in backend/.env');
     }
 
     return new Promise((resolve, reject) => {
@@ -76,8 +103,16 @@ export class CloudinaryService {
    */
   getTransformedUrl(
     publicId: string,
-    preset: 'original' | 'optimized' | 'square' | 'portrait' | 'landscape' | 'thumbnail' | 'certified' | 'eco_focus' | 'video_preview'
+    preset: 'original' | 'optimized' | 'square' | 'portrait' | 'landscape' | 'thumbnail' | 'certified' | 'eco_focus' | 'video_preview',
+    fallbackUrl?: string
   ): string {
+    if (!publicId) return fallbackUrl || '';
+    if (publicId.startsWith('http://') || publicId.startsWith('https://') || publicId.startsWith('/static/')) {
+      return publicId;
+    }
+    if (!this.ensureConfigured()) {
+      return fallbackUrl || (publicId.startsWith('http') ? publicId : `/static/images/greenrise-before.png`);
+    }
     const transformations: Record<string, any> = {
       original: {},
       optimized: { quality: 'auto', fetch_format: 'auto' },
@@ -116,7 +151,10 @@ export class CloudinaryService {
   /**
    * Generates dynamic Cloudinary side-by-side comparison URL
    */
-  getComparisonUrl(beforePublicId: string, afterPublicId: string): string {
+  getComparisonUrl(beforePublicId: string, afterPublicId: string, fallbackUrl?: string): string {
+    if (!this.ensureConfigured()) {
+      return fallbackUrl || `/static/images/greenrise-after.png`;
+    }
     return cloudinary.url(beforePublicId, {
       secure: true,
       transformation: [

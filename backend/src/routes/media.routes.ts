@@ -18,6 +18,8 @@ const upload = multer({
 
 router.get('/', (req, res, next) => mediaController.getMedia(req, res, next));
 router.get('/cloudinary-status', (req, res, next) => mediaController.getCloudinaryStatus(req, res, next));
+router.post('/cloudinary-config', (req, res, next) => mediaController.updateCloudinaryConfig(req, res, next));
+router.post('/cloudinary-reset', (req, res, next) => mediaController.resetToDemoMode(req, res, next));
 router.get('/:id/passport', (req, res, next) => mediaController.getEvidencePassport(req, res, next));
 router.get('/:id/transformation', (req, res, next) => mediaController.getTransformation(req, res, next));
 router.get('/:id', (req, res, next) => mediaController.getMediaById(req, res, next));

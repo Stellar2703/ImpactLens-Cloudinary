@@ -50,15 +50,24 @@ export const insights: any[] = [];
 export const evidenceTrend: any[] = [];
 export const notifications: any[] = [];
 
+import greenBefore from "../assests/greenrise-before.png";
+import greenAfter from "../assests/greenrise-after.png";
+import water from "../assests/water.png";
+import waterBefore from "../assests/water-before.png";
+import solar from "../assests/solar.png";
+import coastBefore from "../assests/coastal-before.png";
+import coastAfter from "../assests/coastal-after.png";
+import infra from "../assests/infra.png";
+
 export const images: Record<string, string> = {
-  greenBefore: "",
-  greenAfter: "",
-  water: "",
-  waterBefore: "",
-  solar: "",
-  coastBefore: "",
-  coastAfter: "",
-  infra: "",
+  greenBefore,
+  greenAfter,
+  water,
+  waterBefore,
+  solar,
+  coastBefore,
+  coastAfter,
+  infra,
 };
 
 export const getProject = (id: string) => projects.find((p) => p.id === id);

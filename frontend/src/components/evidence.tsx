@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { PlayCircle, MapPin, Calendar, CheckCircle2, AlertCircle, CircleDashed, XCircle, Sparkles, ImageOff } from "lucide-react";
 import { getProject, type Asset, type Status } from "@/lib/demo-data";
@@ -40,40 +41,78 @@ export function Confidence({ value }: { value: number }) {
 
 export function AssetCard({ asset }: { asset: Asset }) {
   const p = getProject(asset.projectId);
+  const [imgSrc, setImgSrc] = useState(asset.src);
+  const [hasError, setHasError] = useState(!asset.src);
+
+  useEffect(() => {
+    setImgSrc(asset.src);
+    setHasError(!asset.src);
+  }, [asset.src]);
+
+  const handleImageError = () => {
+    if (asset.originalUrl && imgSrc !== asset.originalUrl) {
+      setImgSrc(asset.originalUrl);
+    } else {
+      setHasError(true);
+    }
+  };
+
   return (
-    <Link to="/media/$id" params={{ id: asset.id }}
+    <div
       className="group overflow-hidden rounded-xl border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
-      <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-        {asset.src ? (
-          <img src={asset.src} alt={asset.title} loading="lazy" width={1024} height={768}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
-            <ImageOff className="h-8 w-8 opacity-40" />
-          </div>
-        )}
-        {asset.type === "video" && (
-          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-navy/80 px-1.5 py-0.5 text-[11px] font-semibold text-navy-foreground">
-            <PlayCircle className="h-3 w-3" /> 0:{String(20 + (asset.confidence % 40)).padStart(2, "0")}
-          </span>
-        )}
-        <span className="absolute right-2 top-2"><StatusBadge status={asset.status} /></span>
-      </div>
+      <Link to="/media/$id" params={{ id: asset.id }} className="block">
+        <div className="relative aspect-[4/3] overflow-hidden bg-muted">
+          {!hasError && imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={asset.title}
+              loading="lazy"
+              width={1024}
+              height={768}
+              onError={handleImageError}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+              <ImageOff className="h-8 w-8 opacity-40" />
+            </div>
+          )}
+          {asset.type === "video" && (
+            <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-md bg-navy/80 px-1.5 py-0.5 text-[11px] font-semibold text-navy-foreground">
+              <PlayCircle className="h-3 w-3" /> 0:{String(20 + (asset.confidence % 40)).padStart(2, "0")}
+            </span>
+          )}
+          <span className="absolute right-2 top-2"><StatusBadge status={asset.status} /></span>
+        </div>
+      </Link>
       <div className="space-y-2 p-3">
-        <div className="flex items-center justify-between">
-          <span className="text-xs font-semibold text-primary">{asset.projectName || p?.name || "Project"}</span>
-          <span className="font-mono text-[11px] text-muted-foreground">{asset.id}</span>
+        <div className="flex items-center justify-between gap-2">
+          {asset.projectId ? (
+            <Link
+              to="/projects/$id"
+              params={{ id: asset.projectId }}
+              className="truncate text-xs font-semibold text-primary hover:underline"
+              title={asset.projectName || p?.name || "Project"}
+            >
+              {asset.projectName || p?.name || "Project"}
+            </Link>
+          ) : (
+            <span className="truncate text-xs font-semibold text-primary">{asset.projectName || p?.name || "Project"}</span>
+          )}
+          <span className="shrink-0 font-mono text-[11px] text-muted-foreground">{asset.id}</span>
         </div>
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{asset.location.split(",")[0]}</span>
-          <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{asset.date}</span>
-        </div>
-        <div className="flex flex-wrap gap-1">
-          {asset.tags.slice(0, 4).map((t) => <span key={t} className="rounded bg-secondary px-1.5 py-0.5 text-[11px] text-secondary-foreground">{t}</span>)}
-        </div>
-        <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">AI confidence <Confidence value={asset.confidence} /></div>
+        <Link to="/media/$id" params={{ id: asset.id }} className="block space-y-2">
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{asset.location.split(",")[0]}</span>
+            <span className="inline-flex items-center gap-1"><Calendar className="h-3 w-3" />{asset.date}</span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {(asset.tags || []).slice(0, 4).map((t) => <span key={t} className="rounded bg-secondary px-1.5 py-0.5 text-[11px] text-secondary-foreground">{t}</span>)}
+          </div>
+          <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">AI confidence <Confidence value={asset.confidence} /></div>
+        </Link>
       </div>
-    </Link>
+    </div>
   );
 }
 

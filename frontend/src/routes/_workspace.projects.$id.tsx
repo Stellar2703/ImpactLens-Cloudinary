@@ -1,7 +1,7 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useParams } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { MapPin, Calendar, CheckCircle2, Sparkles, Image as ImageIcon, Video, FileText, Plus, Link2 } from "lucide-react";
+import { MapPin, Calendar, CheckCircle2, Sparkles, Image as ImageIcon, Images, Video, FileText, Plus, Link2 } from "lucide-react";
 import { AssetCard, Card, IndiaMap, Stat, StatusBadge, AIBadge } from "@/components/evidence";
 import { CompareView, DetectedChanges } from "@/components/compare-view";
 import { createEvidenceRequirement, createMilestone, getEvidenceRequirements, getMedia, getMilestones, getProject } from "@/lib/api";
@@ -10,7 +10,6 @@ import type { Asset, Project } from "@/lib/demo-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_workspace/projects/$id")({
-  loader: ({ params }) => ({ id: params.id }),
   head: () => ({
     meta: [{ title: "Project Evidence Workspace — ImpactLens" }, { name: "description", content: "Evidence, timeline and impact for an ImpactLens project." }],
   }),
@@ -21,7 +20,7 @@ export const Route = createFileRoute("/_workspace/projects/$id")({
 const tabs = ["Overview", "Evidence", "Timeline", "Map", "Before / After", "Impact", "Reports"] as const;
 
 function Workspace() {
-  const { id } = Route.useLoaderData();
+  const { id } = Route.useParams();
   const [p, setProject] = useState<Project>();
   const [list, setList] = useState<Asset[]>([]);
   const [requirements, setRequirements] = useState<EvidenceRequirement[]>([]);
@@ -34,9 +33,13 @@ function Workspace() {
   const [targetDate, setTargetDate] = useState("");
   const [error, setError] = useState("");
   useEffect(() => {
+    if (!id) return;
     Promise.all([getProject(id), getMedia({ projectId: id }), getEvidenceRequirements(id), getMilestones(id)])
       .then(([project, media, evidenceRequirements, projectMilestones]) => {
-        setProject(project); setList(media); setRequirements(evidenceRequirements); setMilestones(projectMilestones);
+        setProject(project);
+        setList(Array.isArray(media) ? media : []);
+        setRequirements(Array.isArray(evidenceRequirements) ? evidenceRequirements : []);
+        setMilestones(Array.isArray(projectMilestones) ? projectMilestones : []);
       })
       .catch((err: Error) => setError(err.message));
   }, [id]);
@@ -101,12 +104,12 @@ function Workspace() {
             <Card title="About this project">
               <p className="text-muted-foreground">{p.description}</p>
               <h3 className="mb-2 mt-5 text-sm font-semibold">Objectives</h3>
-              <ul className="space-y-1.5 text-sm">{p.objectives.map((o) => <li key={o} className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success" />{o}</li>)}</ul>
+              <ul className="space-y-1.5 text-sm">{(p.objectives || []).map((o) => <li key={o} className="flex gap-2"><CheckCircle2 className="h-4 w-4 text-success" />{o}</li>)}</ul>
             </Card>
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
               <Stat label="Media" value={String(list.length)} />
               <Stat label="Verified" value={`${v}%`} />
-              {p.metrics.slice(0, 2).map((m) => <Stat key={m.label} label={m.label} value={m.value} />)}
+              {(p.metrics || []).slice(0, 2).map((m) => <Stat key={m.label} label={m.label} value={m.value} />)}
             </div>
           </div>
           <Card title="Evidence coverage" action={<AIBadge label="Database-backed" />}>
@@ -128,7 +131,7 @@ function Workspace() {
           </Card>
           <Card title="Milestones" action={<button onClick={() => setShowMilestoneForm((value) => !value)} className="inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold hover:bg-muted"><Plus className="h-3.5 w-3.5" />Add milestone</button>}>
             {showMilestoneForm && <form onSubmit={submitMilestone} className="mb-4 flex gap-2 rounded-lg border bg-muted/40 p-3"><input value={milestoneTitle} onChange={(event) => setMilestoneTitle(event.target.value)} placeholder="Milestone title" className="min-w-0 flex-1 rounded-md border bg-background px-3 py-2 text-sm" required /><input type="date" value={targetDate} onChange={(event) => setTargetDate(event.target.value)} className="rounded-md border bg-background px-3 py-2 text-sm" /><button className="rounded-md bg-primary px-3 py-2 text-sm font-semibold text-primary-foreground">Save</button></form>}
-            {milestones.length === 0 ? <p className="text-sm text-muted-foreground">No milestones have been defined for this project.</p> : <div className="space-y-3">{milestones.map((milestone) => <div key={milestone.id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-semibold">{milestone.title}</h3><p className="mt-1 text-xs text-muted-foreground">Target {formatDate(milestone.targetDate)}</p></div><span className="rounded-full bg-muted px-2 py-1 text-[11px] font-semibold">{milestone.status.replace("_", " ")}</span></div><div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Link2 className="h-3.5 w-3.5" />{milestone.mediaLinks?.length || 0} linked evidence assets</div></div>)}</div>}
+            {milestones.length === 0 ? <p className="text-sm text-muted-foreground">No milestones have been defined for this project.</p> : <div className="space-y-3">{milestones.map((milestone) => <div key={milestone.id} className="rounded-lg border p-3"><div className="flex items-start justify-between gap-3"><div><h3 className="text-sm font-semibold">{milestone.title}</h3><p className="mt-1 text-xs text-muted-foreground">Target {formatDate(milestone.targetDate)}</p></div><span className="rounded-full bg-muted px-2 py-1 text-[11px] font-semibold">{milestone.status?.replace("_", " ") || "PLANNED"}</span></div><div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground"><Link2 className="h-3.5 w-3.5" />{milestone.mediaLinks?.length || 0} linked evidence assets</div></div>)}</div>}
           </Card>
         </div>
       )}
@@ -145,13 +148,13 @@ function Workspace() {
                 <div className="font-mono text-xs font-semibold text-primary">{formatDate(milestone.targetDate)}</div>
                 <h3 className="text-xl">{milestone.title}</h3>
                 <div className="mt-1 flex gap-4 text-xs text-muted-foreground">
-                  <span className="inline-flex items-center gap-1"><ImageIcon className="h-3 w-3" />{ev.filter((a) => a.media.resourceType === "image").length} photos</span>
-                  <span className="inline-flex items-center gap-1"><Video className="h-3 w-3" />{ev.filter((a) => a.media.resourceType === "video").length} videos</span>
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold">{milestone.status.replace("_", " ")}</span>
+                  <span className="inline-flex items-center gap-1"><ImageIcon className="h-3 w-3" />{ev.filter((a) => a?.media?.resourceType === "image").length} photos</span>
+                  <span className="inline-flex items-center gap-1"><Video className="h-3 w-3" />{ev.filter((a) => a?.media?.resourceType === "video").length} videos</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-[11px] font-semibold">{milestone.status?.replace("_", " ") || "PLANNED"}</span>
                 </div>
                 <div className="mt-3 flex gap-2">
                   {ev.map((a) =>
-                    a.media.cloudinaryUrl ? (
+                    a?.media?.cloudinaryUrl ? (
                       <Link key={a.media.id} to="/media/$id" params={{ id: a.media.id }}>
                         <img src={a.media.cloudinaryUrl} alt={a.media.title} loading="lazy" className="h-20 w-28 rounded-lg object-cover" />
                       </Link>
@@ -167,7 +170,7 @@ function Workspace() {
 
       {tab === "Map" && (
         <div className="grid gap-6 md:grid-cols-[320px_1fr]">
-          <IndiaMap points={[{ id: p.id, x: p.coords[0], y: p.coords[1], label: p.name }]} active={p.id} />
+          <IndiaMap points={[{ id: p.id, x: p.coords?.[0] ?? 77, y: p.coords?.[1] ?? 20, label: p.name }]} active={p.id} />
           <Card title="Evidence locations">
             {[...new Set(list.map((a) => a.location))].map((l) => (
             <div key={l} className="flex justify-between border-b py-2 text-sm"><span className="inline-flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" />{l}</span><span className="text-muted-foreground">{list.filter((a) => a.location === l).length} assets</span></div>
@@ -189,13 +192,13 @@ function Workspace() {
               </div>
             )}
           </Card>
-          <Card><DetectedChanges items={p.metrics.map((m) => [m.label, m.value])} confidence={v} explanation="The comparison is based on the project metrics currently persisted by the backend." /></Card>
+          <Card><DetectedChanges items={(p.metrics || []).map((m) => [m.label, m.value])} confidence={v} explanation="The comparison is based on the project metrics currently persisted by the backend." /></Card>
         </div>
       )}
 
       {tab === "Impact" && (
         <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {p.metrics.map((m) => <Stat key={m.label} label={m.label} value={m.value} delta="Evidence-backed" />)}
+          {(p.metrics || []).map((m) => <Stat key={m.label} label={m.label} value={m.value} delta="Evidence-backed" />)}
           <Stat label="Project progress" value={`${p.impactScore}%`} delta="Database-backed" />
         </div>
       )}
