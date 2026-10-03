@@ -21,6 +21,8 @@ function AssetDetail() {
   const [passport, setPassport] = useState<any>();
   const [error, setError] = useState("");
   const [deleting, setDeleting] = useState(false);
+  const [imgSrc, setImgSrc] = useState<string>();
+  const [imgError, setImgError] = useState(false);
 
   const handleDelete = async () => {
     if (!a) return;
@@ -38,6 +40,8 @@ function AssetDetail() {
   useEffect(() => {
     Promise.all([getMediaById(id), getEvidencePassport(id)]).then(([asset, evidencePassport]) => {
       setAsset(asset);
+      setImgSrc(asset.src);
+      setImgError(false);
       setStatus(asset.status);
       setPassport(evidencePassport);
       return Promise.all([getProject(asset.projectId), getMedia({ projectId: asset.projectId })]);
@@ -88,8 +92,21 @@ function AssetDetail() {
       <div className="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
         <div className="space-y-6">
           <div className="overflow-hidden rounded-xl border bg-card">
-            {a.src ? (
-              <img src={a.src} alt={a.title} width={1024} height={768} className="w-full object-cover" />
+            {!imgError && (imgSrc || a.src) ? (
+              <img
+                src={imgSrc || a.src}
+                alt={a.title}
+                width={1024}
+                height={768}
+                className="w-full object-cover"
+                onError={() => {
+                  if (a.originalUrl && imgSrc !== a.originalUrl) {
+                    setImgSrc(a.originalUrl);
+                  } else {
+                    setImgError(true);
+                  }
+                }}
+              />
             ) : (
               <div className="flex aspect-video w-full items-center justify-center bg-muted text-sm text-muted-foreground">
                 No preview available
@@ -170,7 +187,7 @@ function AssetDetail() {
           <Card title="Related evidence">
             <div className="grid grid-cols-2 gap-2">{related.map((r) => (
               r.src ? (
-                <Link key={r.id} to="/media/$id" params={{ id: r.id }}><img src={r.src} alt={r.title} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" /></Link>
+                <Link key={r.id} to="/media/$id" params={{ id: r.id }}><img src={r.src} alt={r.title} loading="lazy" className="aspect-[4/3] w-full rounded-lg object-cover" onError={(e) => { if (r.originalUrl && e.currentTarget.src !== r.originalUrl) e.currentTarget.src = r.originalUrl; }} /></Link>
               ) : null
             ))}</div>
           </Card>

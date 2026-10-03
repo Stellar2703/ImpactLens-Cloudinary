@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Link } from "@tanstack/react-router";
 import { PlayCircle, MapPin, Calendar, CheckCircle2, AlertCircle, CircleDashed, XCircle, Sparkles, ImageOff } from "lucide-react";
 import { getProject, type Asset, type Status } from "@/lib/demo-data";
@@ -40,14 +41,37 @@ export function Confidence({ value }: { value: number }) {
 
 export function AssetCard({ asset }: { asset: Asset }) {
   const p = getProject(asset.projectId);
+  const [imgSrc, setImgSrc] = useState(asset.src);
+  const [hasError, setHasError] = useState(!asset.src);
+
+  useEffect(() => {
+    setImgSrc(asset.src);
+    setHasError(!asset.src);
+  }, [asset.src]);
+
+  const handleImageError = () => {
+    if (asset.originalUrl && imgSrc !== asset.originalUrl) {
+      setImgSrc(asset.originalUrl);
+    } else {
+      setHasError(true);
+    }
+  };
+
   return (
     <div
       className="group overflow-hidden rounded-xl border bg-card transition-all hover:-translate-y-0.5 hover:shadow-lg">
       <Link to="/media/$id" params={{ id: asset.id }} className="block">
         <div className="relative aspect-[4/3] overflow-hidden bg-muted">
-          {asset.src ? (
-            <img src={asset.src} alt={asset.title} loading="lazy" width={1024} height={768}
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+          {!hasError && imgSrc ? (
+            <img
+              src={imgSrc}
+              alt={asset.title}
+              loading="lazy"
+              width={1024}
+              height={768}
+              onError={handleImageError}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-muted-foreground">
               <ImageOff className="h-8 w-8 opacity-40" />

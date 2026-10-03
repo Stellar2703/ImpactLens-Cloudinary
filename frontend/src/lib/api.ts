@@ -30,6 +30,14 @@ function toStatus(value: string): Status {
   return "unverified";
 }
 
+function resolveAssetUrl(url?: string): string {
+  if (!url) return "";
+  if (url.startsWith("/") && !url.startsWith("//")) {
+    return `${API_BASE_URL.replace(/\/api$/, "")}${url}`;
+  }
+  return url;
+}
+
 export function mapProject(project: any): Project {
   const media = Array.isArray(project.media) ? project.media : [];
   const first = media[0];
@@ -43,9 +51,9 @@ export function mapProject(project: any): Project {
     start: project.startDate || "",
     end: project.endDate || "",
     status: project.status === "completed" ? "Completed" : project.status === "active" ? "Active" : "Monitoring",
-    cover: project.thumbnailUrl || first?.cloudinaryUrl || "",
-    before: comparisons[0]?.before?.url || project.thumbnailUrl || "",
-    after: comparisons[0]?.after?.url || project.thumbnailUrl || "",
+    cover: resolveAssetUrl(project.thumbnailUrl || first?.cloudinaryUrl || ""),
+    before: resolveAssetUrl(comparisons[0]?.before?.url || project.thumbnailUrl || ""),
+    after: resolveAssetUrl(comparisons[0]?.after?.url || project.thumbnailUrl || ""),
     impactScore: Math.max(0, Math.min(100, Number(project.progress || 0))),
     description: project.description || "",
     objectives: [],
@@ -62,13 +70,15 @@ export function mapProject(project: any): Project {
 
 export function mapMedia(media: any): Asset {
   const ai = media.ai || {};
+  const src = resolveAssetUrl(media.thumbnailUrl || media.fullUrl || "");
+  const originalUrl = resolveAssetUrl(media.fullUrl || media.thumbnailUrl || "");
   return {
     id: media.id,
     projectId: media.projectId,
     projectName: media.projectName,
     title: media.title,
-    src: media.thumbnailUrl || media.fullUrl || "",
-    originalUrl: media.fullUrl || media.thumbnailUrl || "",
+    src,
+    originalUrl,
     type: media.type === "video" ? "video" : "image",
     location: media.location || "Field Observation",
     date: media.date || "",

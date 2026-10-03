@@ -26,9 +26,9 @@ export class CloudinaryService {
       cloudName &&
       apiKey &&
       apiSecret &&
-      cloudName !== 'jvlb23cw' &&
-      apiKey !== '397778318699491' &&
-      apiSecret !== 'vg2oWBLcJeaYooZbv6AEzckNdiE' &&
+      cloudName !== 'your_cloudinary_cloud_name' &&
+      apiKey !== 'your_cloudinary_api_key' &&
+      apiSecret !== 'your_cloudinary_api_secret' &&
       apiSecret !== 'sample_secret_key'
     );
   }
@@ -111,7 +111,7 @@ export class CloudinaryService {
       return publicId;
     }
     if (!this.ensureConfigured()) {
-      return fallbackUrl || `/static/images/greenrise-before.png`;
+      return fallbackUrl || (publicId.startsWith('http') ? publicId : `/static/images/greenrise-before.png`);
     }
     const transformations: Record<string, any> = {
       original: {},

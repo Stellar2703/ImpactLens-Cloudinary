@@ -315,7 +315,7 @@ export class MediaController {
         mediaId: req.params.id,
         preset,
         sourceUrl: media.source.secureUrl,
-        transformedUrl: cloudinaryService.getTransformedUrl(media.source.cloudinaryPublicId, preset),
+        transformedUrl: cloudinaryService.getTransformedUrl(media.source.cloudinaryPublicId, preset, media.source.secureUrl),
         derivedFrom: media.source.cloudinaryPublicId,
       });
     } catch (err) {

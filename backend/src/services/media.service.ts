@@ -23,7 +23,7 @@ export class MediaService {
 
     const isCloudinaryHosted = typeof media.cloudinaryUrl === 'string' && media.cloudinaryUrl.includes('res.cloudinary.com');
     const thumbnailUrl = isCloudinaryHosted && media.cloudinaryPublicId
-      ? cloudinaryService.getTransformedUrl(media.cloudinaryPublicId, 'thumbnail')
+      ? cloudinaryService.getTransformedUrl(media.cloudinaryPublicId, 'thumbnail', media.cloudinaryUrl)
       : (media.cloudinaryUrl || '');
 
     return {
