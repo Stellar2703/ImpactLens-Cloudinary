@@ -17,6 +17,7 @@ export interface Project {
   objectives: string[];
   coords: [number, number];
   metrics: { label: string; value: string }[];
+  milestones?: any[];
 }
 
 export interface Asset {

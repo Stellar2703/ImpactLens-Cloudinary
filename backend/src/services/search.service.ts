@@ -13,7 +13,14 @@ export class SearchService {
     query: string,
     filters?: { projectId?: string; type?: string; verificationStatus?: string; date?: string; offset?: number; limit?: number }
   ): Promise<SearchResultItem[]> {
-    if (!query || !query.trim()) return [];
+    const hasFilter = Boolean(
+      (filters?.projectId && filters.projectId !== 'all') ||
+      (filters?.type && filters.type !== 'all') ||
+      (filters?.verificationStatus && filters.verificationStatus !== 'all') ||
+      filters?.date
+    );
+
+    if (!query?.trim() && !hasFilter) return [];
 
     if (!isDatabaseAvailable()) {
       throw new Error('Semantic search requires live database persistence.');
@@ -95,6 +102,14 @@ export class SearchService {
               }
             }
           }
+        }
+
+        if (!keywords.length) {
+          return {
+            asset,
+            matchScore: 100,
+            matchReason: `Evidence for project ${rawAsset.project.name}`,
+          };
         }
 
         if (score === 0) return null;

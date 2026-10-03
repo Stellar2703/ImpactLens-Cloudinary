@@ -10,7 +10,38 @@ const verificationUpdateSchema = z.object({
 export class VerificationController {
   async getVerifications(req: Request, res: Response, next: NextFunction) {
     try {
+      // 1. Ensure any media assets without a verification record are queued as PENDING
+      const unlinkedMedia = await prisma.mediaAsset.findMany({
+        where: {
+          verifications: { none: {} },
+        },
+        include: { aiMetadata: true, project: true },
+      });
+
+      for (const m of unlinkedMedia) {
+        await prisma.verification.create({
+          data: {
+            mediaId: m.id,
+            status: 'PENDING',
+            category: 'Field Evidence Review',
+            comment: m.aiMetadata?.description || 'AI field capture queued for provenance verification.',
+          },
+        });
+      }
+
+      // 2. Query verifications with optional status filtering
+      const statusParam = (req.query.status as string)?.toLowerCase();
+      const whereClause =
+        statusParam === 'pending'
+          ? { status: 'PENDING' }
+          : statusParam === 'finalised' || statusParam === 'finalized'
+          ? { status: { not: 'PENDING' } }
+          : statusParam && statusParam !== 'all'
+          ? { status: statusParam.toUpperCase() }
+          : {};
+
       const items = await prisma.verification.findMany({
+        where: whereClause,
         include: { media: { include: { project: true, aiMetadata: true } } },
         orderBy: { createdAt: 'desc' },
       });
@@ -25,6 +56,7 @@ export class VerificationController {
         timestamp: item.createdAt.toISOString(),
         status: item.status.toLowerCase(),
         category: item.category,
+        comment: item.comment || undefined,
       })));
     } catch (err) {
       next(err);

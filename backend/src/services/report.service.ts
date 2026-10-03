@@ -1,6 +1,6 @@
 import { ReportData } from './mock-db';
-import { prisma, isDatabaseAvailable } from '../config/database';
-import { mediaService } from './media.service';
+import { prisma } from '../config/database';
+import { projectAnalysisService } from './project-analysis.service';
 
 export class ReportService {
   toReportData(report: any): ReportData {
@@ -24,8 +24,9 @@ export class ReportService {
     };
   }
 
-  async getAllReports(): Promise<ReportData[]> {
+  async getAllReports(projectId?: string): Promise<ReportData[]> {
     const reports = await prisma.report.findMany({
+      where: projectId && projectId !== 'all' ? { projectId } : undefined,
       include: { project: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -52,50 +53,34 @@ export class ReportService {
           },
         },
         comparisons: true,
+        milestones: true,
+        evidenceRequirements: true,
       },
     });
     if (!persistedProject) {
       throw new Error(`Project "${projectId}" not found. Please create a project and upload evidence first.`);
     }
 
-    const projectMedia = persistedProject.media.map((item) => mediaService.toMediaData(item));
-    const verifiedMedia = projectMedia.filter((media) => ['confirmed', 'verified'].includes(media.verificationStatus));
-    const locations = new Set(persistedProject.media.map((item) => `${item.latitude || ''}:${item.longitude || ''}`)).size;
+    const analysis = await projectAnalysisService.generateProjectReportAnalysis(persistedProject);
     const reportId = `rep_${Date.now().toString().slice(-8)}`;
-    const reportTitle = title || `${persistedProject.name} — Evidence Intelligence Report`;
-    const summary = `Evidence report for ${persistedProject.name}. Synthesized from ${projectMedia.length} field media assets (${verifiedMedia.length} verified) across ${locations || 1} monitored location(s).`;
-
-    const content = {
-      statistics: [
-        { label: 'Field Evidence Assets', value: String(projectMedia.length), change: '' },
-        { label: 'Human-Reviewed Assets', value: String(verifiedMedia.length), change: '' },
-        { label: 'Recorded Sites', value: String(locations || 1), change: '' },
-        { label: 'Identified Signals', value: String(projectMedia.reduce((acc, m) => acc + (m.ai.tags?.length || 0), 0)), change: '' },
-      ],
-      timeline: projectMedia.slice(0, 10).map((m) => ({
-        date: m.date,
-        title: m.title,
-        description: m.ai.description || 'Evidence recorded',
-        mediaId: m.id,
-      })),
-      selectedEvidence: projectMedia.map((media) => media.id),
-      aiObservations: projectMedia.flatMap((media) => media.ai.observations?.map((o: any) => o.label || o.detail) || []),
-      sourceAssets: projectMedia.map((media) => media.id),
-      limitations: [
-        'This report summarizes observations visible in the uploaded evidence.',
-        'It reflects recorded field imagery and human review decisions.',
-      ],
-    };
+    const reportTitle = title || analysis.title;
 
     const created = await prisma.report.create({
       data: {
         id: reportId,
         projectId,
         title: reportTitle,
-        type,
+        type: type || analysis.type,
         status: 'published',
-        summary,
-        content,
+        summary: analysis.summary,
+        content: {
+          statistics: analysis.statistics,
+          timeline: analysis.timeline,
+          selectedEvidence: persistedProject.media.map((item) => item.id),
+          aiObservations: analysis.aiObservations,
+          sourceAssets: persistedProject.media.map((item) => item.id),
+          limitations: analysis.limitations,
+        },
       },
       include: { project: true },
     });
@@ -106,8 +91,8 @@ export class ReportService {
         reportId,
         eventType: 'REPORT_GENERATED',
         actorType: 'USER',
-        description: `Generated report "${reportTitle}" from ${projectMedia.length} evidence asset(s).`,
-        metadata: { sourceMediaIds: content.sourceAssets },
+        description: `Generated AI report "${reportTitle}" for ${persistedProject.name}.`,
+        metadata: { sourceMediaIds: persistedProject.media.map((item) => item.id) },
       },
     });
 

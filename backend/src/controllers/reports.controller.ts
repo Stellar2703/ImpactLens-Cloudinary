@@ -13,7 +13,8 @@ const updateReportSchema = z.object({
 export class ReportsController {
   async getReports(req: Request, res: Response, next: NextFunction) {
     try {
-      const reports = await reportService.getAllReports();
+      const projectId = typeof req.query.projectId === 'string' ? req.query.projectId : undefined;
+      const reports = await reportService.getAllReports(projectId);
       res.json(reports);
     } catch (err) {
       next(err);
