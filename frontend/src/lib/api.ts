@@ -56,15 +56,16 @@ export function mapProject(project: any): Project {
     after: resolveAssetUrl(comparisons[0]?.after?.url || project.thumbnailUrl || ""),
     impactScore: Math.max(0, Math.min(100, Number(project.progress || 0))),
     description: project.description || "",
-    objectives: [],
+    objectives: Array.isArray(project.objectives) && project.objectives.length ? project.objectives : [],
     coords: [
       Math.max(5, Math.min(95, ((Number(project.longitude || 77) - 68) / 29) * 100)),
       Math.max(5, Math.min(95, ((36 - Number(project.latitude || 20)) / 30) * 100)),
     ],
-    metrics: [
+    metrics: Array.isArray(project.metrics) && project.metrics.length ? project.metrics : [
       { label: "Evidence assets", value: String(project.mediaCount || media.length || 0) },
       { label: "Locations", value: String(project.locations || 0) },
     ],
+    milestones: project.timeline || project.milestones || [],
   };
 }
 
@@ -237,6 +238,7 @@ export type Verification = {
   timestamp: string;
   status: VerificationStatus;
   category?: string;
+  comment?: string;
 };
 
 export async function getVerifications(): Promise<Verification[]> {
@@ -310,8 +312,10 @@ export type Report = {
   limitations?: string[];
 };
 
-export async function getReports(): Promise<Report[]> {
-  return request<Report[]>("/reports");
+export async function getReports(filters?: { projectId?: string }): Promise<Report[]> {
+  const params = new URLSearchParams();
+  if (filters?.projectId && filters.projectId !== "all") params.set("projectId", filters.projectId);
+  return request<Report[]>(`/reports${params.size ? `?${params.toString()}` : ""}`);
 }
 
 export async function getReport(id: string): Promise<Report> {

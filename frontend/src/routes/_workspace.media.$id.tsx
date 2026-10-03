@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { deleteMedia, getEvidencePassport, getMedia, getMediaById, getProject, retryMediaAnalysis, verifyMedia } from "@/lib/api";
 import type { Asset, Project, Status } from "@/lib/demo-data";
-import { ArrowLeft, CheckCircle2, Download, Fingerprint, Trash2 } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Download, Fingerprint, Trash2, XCircle, RotateCcw } from "lucide-react";
 import { Card, StatusBadge, AIBadge, Confidence } from "@/components/evidence";
 
 export const Route = createFileRoute("/_workspace/media/$id")({
@@ -177,12 +177,48 @@ function AssetDetail() {
             </div>
           </Card>
           <Card title="Verification">
-            <div className="grid grid-cols-3 gap-2">
-              <button onClick={() => set("verified")} className="rounded-lg bg-success px-3 py-2 text-sm font-semibold text-primary-foreground"><CheckCircle2 className="mx-auto mb-0.5 h-4 w-4" />Verify</button>
-              <button onClick={() => set("review")} className="rounded-lg border px-3 py-2 text-sm font-semibold">Needs review</button>
-              <button onClick={() => set("rejected")} className="rounded-lg border border-destructive/40 px-3 py-2 text-sm font-semibold text-destructive">Reject</button>
-            </div>
-            <a href={passport?.source?.secureUrl || a.src} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground"><Download className="h-4 w-4" />Open original</a>
+            {status === "verified" ? (
+              <div className="rounded-xl border border-success/30 bg-success/10 p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 font-semibold text-success">
+                  <CheckCircle2 className="h-5 w-5" /> Verified &amp; Finalised
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">This evidence has been confirmed and verified by human review.</p>
+                <button
+                  onClick={() => set("review")}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  <RotateCcw className="h-3 w-3" /> Re-open for review
+                </button>
+              </div>
+            ) : status === "rejected" ? (
+              <div className="rounded-xl border border-destructive/30 bg-destructive/10 p-4 text-center">
+                <div className="flex items-center justify-center gap-1.5 font-semibold text-destructive">
+                  <XCircle className="h-5 w-5" /> Rejected &amp; Finalised
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">This evidence was flagged as rejected or false positive.</p>
+                <button
+                  onClick={() => set("review")}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground hover:underline"
+                >
+                  <RotateCcw className="h-3 w-3" /> Re-open for review
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => set("verified")} className="rounded-lg bg-success px-3 py-2 text-sm font-semibold text-primary-foreground hover:opacity-90 transition-opacity">
+                  <CheckCircle2 className="mx-auto mb-0.5 h-4 w-4" />Verify
+                </button>
+                <button onClick={() => set("review")} className="rounded-lg border px-3 py-2 text-sm font-semibold hover:bg-muted transition-colors">
+                  Needs review
+                </button>
+                <button onClick={() => set("rejected")} className="rounded-lg border border-destructive/40 px-3 py-2 text-sm font-semibold text-destructive hover:bg-destructive/10 transition-colors">
+                  Reject
+                </button>
+              </div>
+            )}
+            <a href={passport?.source?.secureUrl || a.src} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
+              <Download className="h-4 w-4" />Open original
+            </a>
           </Card>
           <Card title="Related evidence">
             <div className="grid grid-cols-2 gap-2">{related.map((r) => (
